@@ -1,0 +1,273 @@
+/* Charity: water Brand Colors & Fonts
+
+Primary Colors:
+- Yellow:     #FFC907
+- Blue:       #2E9DF7
+
+Secondary Colors:
+- Light Blue: #8BD1CB
+- Green:      #4FCB53
+- Orange:     #FF902A
+- Red:        #F5402C
+- Dark Green: #159A48
+- Pink:       #F16061
+
+Fonts:
+- Proxima Nova
+- Avenir
+
+*/
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 30px;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.container {
+  max-width: 750px;
+  margin: 50px auto;
+  background-color: #fff;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  text-align: center;
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+h1 img {
+  height: 50px;
+  margin-right: 15px;
+  display: block;
+}
+
+.game-instructions {
+  font-size: 18px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  background-color: #f5f5f5;
+  padding: 15px 0;
+  border-radius: 8px;
+}
+
+.stats p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stats p span {
+  color: #2E9DF7; /* charity: water blue for key numbers */
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.grid-cell {
+  background-color: #e8e8e8;
+  border-radius: 8px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.water-can-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  /* Ensure the wrapper is properly centered */
+}
+
+.water-can {
+  width: 100%;
+  height: 100%;
+  background-image: url('img/water-can.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  border-radius: 12px;
+  animation: popUp 0.45s cubic-bezier(0.17, 0.67, 0.34, 2);
+  transform-origin: center; /* Ensure scaling happens from the center */
+  border: 3px solid rgba(46,157,247,0.12);
+  box-shadow: 0 6px 14px rgba(46,157,247,0.08);
+}
+
+@keyframes popUp {
+  0% {
+    transform: scale(0.5); /* Start scaling from the center */
+  }
+  100% {
+    transform: scale(1); /* End scaling at full size */
+  }
+}
+
+
+button {
+  background-color: #2E9DF7; /* charity: water primary blue */
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+  margin: 30px auto 0;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #238fe0;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.controls .secondary {
+  background-color: #FFC907; /* charity: water yellow as secondary */
+  color: #1a1a1a;
+  padding: 12px 20px;
+  border-radius: 8px;
+}
+
+.controls .secondary:hover {
+  background-color: #ffb800;
+}
+
+/* Collected state */
+.water-can.collected {
+  transform: scale(0.85);
+  filter: hue-rotate(150deg) saturate(0.6) brightness(1.1);
+  opacity: 0.85;
+  transition: transform 0.18s, filter 0.18s, opacity 0.2s;
+}
+
+/* floating score popup */
+.score-popup {
+  position: fixed;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(46,157,247,1), rgba(139,209,203,1));
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: bold;
+  transform: translateY(0);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 9999;
+}
+.score-popup.visible {
+  transform: translateY(-18px);
+  opacity: 1;
+}
+
+/* Negative popup (for oil) */
+.score-popup.negative {
+  background: linear-gradient(90deg, rgba(245,64,44,1), rgba(255,144,42,1));
+}
+
+/* Oil tank visuals */
+.oil-tank {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background-image: url('img/oil-tank.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  position: relative;
+  border: 2px solid rgba(0,0,0,0.08);
+}
+.oil-tank.hit {
+  transform: scale(0.95) rotate(-6deg);
+  filter: hue-rotate(-20deg) saturate(0.6);
+  opacity: 0.9;
+  transition: transform 0.18s, filter 0.2s, opacity 0.2s;
+}
+
+/* Achievements and messages */
+.achievement {
+  text-align: center;
+  margin: 10px 0 20px;
+  font-weight: 700;
+  color: #159A48;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  .container { padding: 20px; margin: 20px; }
+  .game-grid { gap: 10px; max-width: 100%; }
+  .water-can-wrapper { width: 60px; height: 60px; }
+  .stats { flex-direction: column; gap: 8px; align-items: center; }
+  .controls { flex-direction: column; width: 100%; }
+  .controls button { width: 100%; padding: 14px; font-size: 18px; }
+}
+
+/* Confetti styles */
+.confetti-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 0; /* we animate pieces individually */
+  pointer-events: none;
+  overflow: visible;
+  z-index: 9999;
+}
+.confetti-piece {
+  position: fixed;
+  top: 20%;
+  will-change: transform, opacity;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120vh) rotate(540deg);
+    opacity: 0;
+  }
+}
