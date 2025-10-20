@@ -117,10 +117,8 @@ function startGame() {
   // Timer
   countdownInterval = setInterval(() => {
     timeLeft -= 1;
-    document.getElementById('timer').textContent = timeLeft;
-    if (timeLeft <= 0) {
-      endGame(false);
-    }
+    if (timerEl) timerEl.textContent = timeLeft;
+    if (timeLeft <= 0) endGame(false);
   }, 1000);
 }
 
