@@ -15,7 +15,13 @@ let timeLeft = 30;
 let activeSpawnMs = 900;
 let winThreshold = 20;
 const pointsPerCan = 1;
-
+let milestoneThresholds = [];
+const milestoneMessages = [
+  'Halfway there — keep going!',
+  'You are on fire — almost there!',
+  'So close — push for the win!'
+];
+const shownMilestones = new Set();
 
 function createGrid() {
   const grid = document.querySelector('.game-grid');
@@ -75,6 +81,16 @@ function spawnWaterCan() {
       score += pointsPerCan;
       can.classList.add('collected');
       updateStats();
+      // add a small collected icon to the collected list
+      const list = document.getElementById('collected-list');
+      if (list) {
+        const icon = document.createElement('div');
+        icon.className = 'icon small';
+        icon.textContent = '💧';
+        list.appendChild(icon);
+        // keep only latest 8
+        while (list.children.length > 8) list.removeChild(list.children[0]);
+      }
       showScorePopup(ev, '+' + pointsPerCan);
       setTimeout(() => { if (can && can.parentElement) can.parentElement.removeChild(can); }, 300);
       if (currentCans >= winThreshold) endGame(true);
@@ -106,6 +122,17 @@ function spawnWaterCan() {
       score = Math.max(0, score - penalty);
       oil.classList.add('hit');
       updateStats();
+      // show transient negative badge in collected-list
+      const list = document.getElementById('collected-list');
+      if (list) {
+        const badge = document.createElement('div');
+        badge.className = 'icon small';
+        badge.textContent = '-' + penalty;
+        badge.style.background = 'rgba(255,77,77,0.95)';
+        badge.style.color = '#fff';
+        list.appendChild(badge);
+        setTimeout(() => { if (badge && badge.parentElement) badge.parentElement.removeChild(badge); }, 800);
+      }
       showScorePopup(ev, '-' + penalty);
       setTimeout(() => { if (oil && oil.parentElement) oil.parentElement.removeChild(oil); }, 360);
     };
@@ -126,6 +153,26 @@ function updateStats() {
   if (scoreEl) scoreEl.textContent = score;
   const timerEl = document.getElementById('timer');
   if (timerEl) timerEl.textContent = timeLeft;
+  checkMilestones();
+}
+
+function checkMilestones() {
+  if (!milestoneThresholds || !milestoneThresholds.length) return;
+  for (let i = 0; i < milestoneThresholds.length; i++) {
+    const t = milestoneThresholds[i];
+    if (currentCans >= t && !shownMilestones.has(t)) {
+      shownMilestones.add(t);
+      const ach = document.getElementById('achievements');
+      if (ach) {
+        const msg = milestoneMessages[i % milestoneMessages.length] || 'Nice milestone!';
+        ach.textContent = msg;
+        setTimeout(() => { if (ach) ach.textContent = ''; }, 2200);
+      }
+      // small popup too
+      showScorePopup(null, '⭐ ' + (t) + ' cans');
+      break; // show one milestone at a time
+    }
+  }
 }
 
 function showScorePopup(event, text) {
@@ -175,7 +222,9 @@ function endGame(won) {
     achievements.textContent = msg + ' You scored ' + score + ' points.';
   }
 
-  if (won) fireConfetti();
+  if (won) {
+    fireConfetti();
+  }
 }
 
 function startGame() {
@@ -193,6 +242,10 @@ function startGame() {
   currentCans = 0;
   score = 0;
   updateStats();
+
+  // reset milestones for this run
+  shownMilestones.clear();
+  milestoneThresholds = [Math.ceil(winThreshold / 2), Math.ceil(winThreshold * 0.75)];
 
   if (spawnInterval) { clearInterval(spawnInterval); spawnInterval = null; }
   spawnInterval = setInterval(spawnWaterCan, activeSpawnMs);
@@ -224,6 +277,11 @@ function resetGame() {
 
   const ach = document.getElementById('achievements');
   if (ach) ach.textContent = '';
+  
+  // Clear the water tracker (collected-list)
+  const list = document.getElementById('collected-list');
+  if (list) list.innerHTML = '';
+  
   clearCells();
 }
 

@@ -37,6 +37,13 @@ body {
   color: #eaf6ff;
 }
 
+/* Collected icons list */
+.collected-list { display:flex; gap:8px; margin:8px 0 12px; align-items:center; }
+.collected-list .icon { width:28px; height:28px; border-radius:6px; background:var(--yellow); box-shadow:0 4px 10px rgba(0,0,0,0.12); display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:#052; }
+.collected-list .icon.small { width:22px; height:22px; border-radius:5px; font-size:12px; }
+
+.site-footer a { color: var(--brand-blue); text-decoration: underline; }
+
 .container {
   max-width: 920px;
   margin: 36px auto;
@@ -93,7 +100,12 @@ button.secondary { background: linear-gradient(180deg,#f5fbff,#eef7ff); color: v
 
 /* Game grid ---------------------------------------------------------- */
 .game-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 10px auto 12px; max-width: 640px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* fixed 3 columns to match original design */
+  gap: 14px;
+  margin: 10px auto 12px;
+  max-width: 640px;
+  width: 100%;
 }
 .grid-cell {
   background: linear-gradient(180deg, rgba(0,118,147,0.45) 0%, rgba(0,70,90,0.55) 100%);
@@ -147,9 +159,27 @@ button.secondary { background: linear-gradient(180deg,#f5fbff,#eef7ff); color: v
 
 /* Responsive --------------------------------------------------------- */
 @media (max-width: 600px) {
-  .container { padding: 20px; margin: 18px; }
-  .game-grid { gap: 10px; max-width: 100%; }
+  .container { padding: 18px; margin: 14px; }
+  .game-grid { gap: 10px; }
   .top-controls { flex-direction: column; align-items: stretch; gap: 8px; }
-  .grid-cell { height: 100px; }
-  .item-img { width: 60px; height: 60px; }
+  /* make controls easier to tap on mobile */
+  .top-controls > * { width: 100%; }
+  #difficulty { max-width: 160px; width: 100%; }
+  button { width: 100%; }
+  .grid-cell { height: 110px; }
+  .item-img { width: 64px; height: 64px; }
+}
+
+/* Narrow phones */
+@media (max-width: 420px) {
+  body { padding: 12px; }
+  .container { padding: 12px; margin: 10px; }
+  .logo { height: 36px; }
+  .site-header h1 { font-size: 16px; }
+  .game-grid { gap: 8px; }
+  .grid-cell { min-height: 92px; }
+  /* reduce columns to 2 on very narrow phones to avoid cramped cells */
+  .game-grid { grid-template-columns: repeat(2, 1fr); max-width: 100%; }
+  .item-img { width: 56px; height: 56px; }
+  .stats { gap: 10px; }
 }
