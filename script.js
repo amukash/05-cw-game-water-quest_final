@@ -1,120 +1,206 @@
-// Game configuration and state variables
-const GOAL_CANS = 25;        // Total items needed to collect
-let currentCans = 0;         // Current number of items collected
-let score = 0;               // Player score (can differ from cans if you want weighted points)
-let gameActive = false;      // Tracks if game is currently running
-let spawnInterval;           // Holds the interval for spawning items
-let countdownInterval;       // Holds the timer interval
-const GAME_SECONDS = 30;     // Total time per game
-let timeLeft = GAME_SECONDS;
+/* Cleaned script.js with images for water-can and oil-tank */
 
-// Creates the 3x3 game grid where items will appear
+const DIFFICULTY_SETTINGS = {
+  Easy:   { time: 40, spawnMs: 1000, goalPoints: 15, oilPenalty: 3 },
+  Normal: { time: 30, spawnMs: 900,  goalPoints: 20, oilPenalty: 5 },
+  Hard:   { time: 20, spawnMs: 700,  goalPoints: 25, oilPenalty: 7 }
+};
+
+let currentCans = 0;
+let score = 0;
+let gameActive = false;
+let spawnInterval = null;
+let countdownInterval = null;
+let timeLeft = 30;
+let activeSpawnMs = 900;
+let winThreshold = 20;
+const pointsPerCan = 1;
+
+
 function createGrid() {
   const grid = document.querySelector('.game-grid');
-  grid.innerHTML = ''; // Clear any existing grid cells
+  if (!grid) return;
+  grid.innerHTML = '';
   for (let i = 0; i < 9; i++) {
     const cell = document.createElement('div');
-    cell.className = 'grid-cell'; // Each cell represents a grid square
+    cell.className = 'grid-cell';
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('tabindex', '0');
     grid.appendChild(cell);
   }
 }
 
-// Ensure the grid is created when the page loads
-createGrid();
+function clearCells() {
+  const cells = Array.from(document.querySelectorAll('.grid-cell'));
+  cells.forEach(c => {
+    const wrapper = c.querySelector('.water-can-wrapper');
+    if (wrapper) {
+      wrapper.classList.add('fade-out');
+      setTimeout(() => { if (wrapper && wrapper.parentElement) wrapper.parentElement.removeChild(wrapper); }, 280);
+    } else {
+      c.innerHTML = '';
+    }
+  });
+}
 
-// Spawns a new item in a random grid cell
 function spawnWaterCan() {
-  if (!gameActive) return; // Stop if the game is not active
-  const cells = document.querySelectorAll('.grid-cell');
-  
-  // Clear all cells before spawning a new water can
-  cells.forEach(cell => (cell.innerHTML = ''));
+  if (!gameActive) return;
+  const cells = Array.from(document.querySelectorAll('.grid-cell'));
+  if (!cells.length) return;
 
-  // Select a random cell from the grid to place the water can
+  clearCells();
+
   const randomCell = cells[Math.floor(Math.random() * cells.length)];
+  if (!randomCell) return;
+  const spawnOil = Math.random() < 0.18;
 
-  // Decide whether to spawn a positive water can or a negative oil tank
-  const spawnOil = Math.random() < 0.18; // ~18% chance of oil tank
   if (!spawnOil) {
-    // Spawn water can
     randomCell.innerHTML = `
-      <div class="water-can-wrapper">
-        <button class="water-can" aria-label="Collect can"></button>
+      <div class="water-can-wrapper spawn">
+        <button class="water-can" aria-label="Collect can">
+          <img class="item-img" src="img/water-can-transparent.png" alt="Water can">
+        </button>
       </div>
     `;
-
     const can = randomCell.querySelector('.water-can');
-    let collected = false; // per-can guard to avoid double-collect
-    const collect = (e) => {
+    const wrapper = randomCell.querySelector('.water-can-wrapper');
+    // trigger spawn transition
+    requestAnimationFrame(() => { if (wrapper) wrapper.classList.remove('spawn'); });
+    if (!can) return;
+    let collected = false;
+    const collect = (ev) => {
       if (!gameActive || collected) return;
       collected = true;
-      // Increase counters
       currentCans += 1;
-      score += 10; // each can gives 10 points
-      // Visual feedback: pulse and tint
+      score += pointsPerCan;
       can.classList.add('collected');
       updateStats();
-      // Small score pop animation
-      showScorePopup(e, "+10");
-      // Remove can after a short delay to show feedback
-      setTimeout(() => {
-        if (can && can.parentElement) can.parentElement.removeChild(can);
-      }, 300);
-
-      // Check win
-      if (currentCans >= GOAL_CANS) {
-        endGame(true);
-      }
+      showScorePopup(ev, '+' + pointsPerCan);
+      setTimeout(() => { if (can && can.parentElement) can.parentElement.removeChild(can); }, 300);
+      if (currentCans >= winThreshold) endGame(true);
     };
-
     can.addEventListener('click', collect);
-    // support keyboard accessibility
     can.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') collect(ev);
+      const key = ev.key || ev.code || '';
+      if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') { ev.preventDefault(); collect(ev); }
     });
-  } else {
-    // Spawn oil tank obstacle
+    } else {
     randomCell.innerHTML = `
-      <div class="water-can-wrapper">
-        <button class="oil-tank" aria-label="Oil tank - avoid"></button>
+      <div class="water-can-wrapper spawn">
+        <button class="oil-tank" aria-label="Oil tank - avoid">
+          <img class="item-img" src="img/oil-tank.png" alt="Oil tank">
+        </button>
       </div>
     `;
+    const wrapper = randomCell.querySelector('.water-can-wrapper');
+    requestAnimationFrame(() => { if (wrapper) wrapper.classList.remove('spawn'); });
     const oil = randomCell.querySelector('.oil-tank');
+    if (!oil) return;
     let hit = false;
-    const hitOil = (e) => {
+    const hitOil = (ev) => {
       if (!gameActive || hit) return;
       hit = true;
-      // Penalize score
-      score = Math.max(0, score - 15);
-      // Visual feedback
+      const diffEl = document.getElementById('difficulty');
+      const difficulty = (diffEl && diffEl.value) ? diffEl.value : 'Normal';
+      const penalty = DIFFICULTY_SETTINGS[difficulty].oilPenalty;
+      score = Math.max(0, score - penalty);
       oil.classList.add('hit');
       updateStats();
-      // Negative popup
-      showScorePopup(e, "-15");
-      // Remove oil tank shortly after
-      setTimeout(() => { if (oil && oil.parentElement) oil.parentElement.removeChild(oil); }, 400);
+      showScorePopup(ev, '-' + penalty);
+      setTimeout(() => { if (oil && oil.parentElement) oil.parentElement.removeChild(oil); }, 360);
     };
     oil.addEventListener('click', hitOil);
     oil.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') hitOil(ev);
+      const key = ev.key || ev.code || '';
+      if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') { ev.preventDefault(); hitOil(ev); }
     });
   }
 }
 
-// Initializes and starts a new game
+function updateStats() {
+  const currentEl = document.getElementById('current-cans');
+  if (currentEl) currentEl.textContent = currentCans;
+  const goalEl = document.getElementById('goal-cans');
+  if (goalEl) goalEl.textContent = winThreshold;
+  const scoreEl = document.getElementById('score');
+  if (scoreEl) scoreEl.textContent = score;
+  const timerEl = document.getElementById('timer');
+  if (timerEl) timerEl.textContent = timeLeft;
+}
+
+function showScorePopup(event, text) {
+  const popup = document.createElement('div');
+  popup.className = 'score-popup' + (text && text.indexOf && text.indexOf('-') === 0 ? ' negative' : '');
+  popup.textContent = text;
+  document.body.appendChild(popup);
+
+  let x = Math.floor(window.innerWidth / 2);
+  let y = Math.floor(window.innerHeight / 2);
+  if (event && event.touches && event.touches[0]) {
+    x = event.touches[0].clientX; y = event.touches[0].clientY;
+  } else if (event && typeof event.clientX !== 'undefined') {
+    x = event.clientX; y = event.clientY;
+  }
+  popup.style.left = (x - 20) + 'px';
+  popup.style.top = (y - 30) + 'px';
+
+  requestAnimationFrame(() => { popup.classList.add('visible'); });
+  setTimeout(() => { popup.classList.remove('visible'); }, 700);
+  setTimeout(() => { if (popup && popup.parentElement) popup.parentElement.removeChild(popup); }, 900);
+}
+
+const winMessages = [
+  "Amazing! You helped bring water to a community!",
+  "You did it — lives are changing because of your speed!",
+  "Victory! You're a water hero!"
+];
+const loseMessages = [
+  "Good try — keep practicing to reach more communities!",
+  "Almost there — try again and beat your score!",
+  "Nice effort — you can do it with one more run!"
+];
+
+function endGame(won) {
+  if (typeof won === 'undefined') won = false;
+  gameActive = false;
+  if (spawnInterval) { clearInterval(spawnInterval); spawnInterval = null; }
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+  const wrappers = document.querySelectorAll('.water-can-wrapper');
+  Array.prototype.forEach.call(wrappers, (n) => { if (n && n.parentElement) n.parentElement.removeChild(n); });
+
+  const achievements = document.getElementById('achievements');
+  if (achievements) {
+    const msg = won ? winMessages[Math.floor(Math.random() * winMessages.length)] : loseMessages[Math.floor(Math.random() * loseMessages.length)];
+    achievements.textContent = msg + ' You scored ' + score + ' points.';
+  }
+
+  if (won) fireConfetti();
+}
+
 function startGame() {
-  if (gameActive) return; // Prevent starting a new game if one is already active
+  if (gameActive) return;
   gameActive = true;
-  createGrid(); // Set up the game grid
-  // Reset counters and UI
+  createGrid();
+
+  const diffEl = document.getElementById('difficulty');
+  const difficulty = (diffEl && diffEl.value) ? diffEl.value : 'Normal';
+  const settings = DIFFICULTY_SETTINGS[difficulty] || DIFFICULTY_SETTINGS.Normal;
+  activeSpawnMs = settings.spawnMs;
+  timeLeft = settings.time;
+  winThreshold = settings.goalPoints;
+
   currentCans = 0;
   score = 0;
-  timeLeft = GAME_SECONDS;
   updateStats();
 
-  spawnInterval = setInterval(spawnWaterCan, 900); // Spawn water cans ~every 0.9s
+  if (spawnInterval) { clearInterval(spawnInterval); spawnInterval = null; }
+  spawnInterval = setInterval(spawnWaterCan, activeSpawnMs);
+  spawnWaterCan();
 
-  // Timer
+  const timerEl = document.getElementById('timer');
+  if (timerEl) timerEl.textContent = timeLeft;
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
   countdownInterval = setInterval(() => {
     timeLeft -= 1;
     if (timerEl) timerEl.textContent = timeLeft;
@@ -122,107 +208,80 @@ function startGame() {
   }, 1000);
 }
 
-function endGame() {
-  // Allow optional parameter to indicate win (true) or timeout (false)
-  const won = arguments[0] === true;
-  gameActive = false; // Mark the game as inactive
-  clearInterval(spawnInterval); // Stop spawning water cans
-  clearInterval(countdownInterval);
-  // Clear remaining cans
-  document.querySelectorAll('.water-can').forEach(c => c.remove());
-  // Show result
-  const achievements = document.getElementById('achievements');
-  achievements.textContent = won ? `You collected ${currentCans} cans — You win!` : `Time's up — You collected ${currentCans} cans.`;
-  if (won) {
-    fireConfetti();
-  }
-}
-
-// Set up click handler for the start button
-document.getElementById('start-game').addEventListener('click', startGame);
-
-// Reset game: stop timers, clear cans and messages, reset counters and UI
 function resetGame() {
-  // Stop game if active
   gameActive = false;
-  clearInterval(spawnInterval);
-  clearInterval(countdownInterval);
-  // Reset counters
+  if (spawnInterval) { clearInterval(spawnInterval); spawnInterval = null; }
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
   currentCans = 0;
   score = 0;
-  timeLeft = GAME_SECONDS;
+  const diffEl = document.getElementById('difficulty');
+  const difficulty = (diffEl && diffEl.value) ? diffEl.value : 'Normal';
+  const settings = DIFFICULTY_SETTINGS[difficulty] || DIFFICULTY_SETTINGS.Normal;
+  timeLeft = settings.time;
+  winThreshold = settings.goalPoints;
   updateStats();
-  // Clear UI
-  document.getElementById('timer').textContent = timeLeft;
-  document.getElementById('achievements').textContent = '';
-  // Remove any remaining can elements
-  document.querySelectorAll('.water-can').forEach(c => c.remove());
+
+  const ach = document.getElementById('achievements');
+  if (ach) ach.textContent = '';
+  clearCells();
 }
 
-// Wire reset button
-const resetBtn = document.getElementById('reset-game');
-if (resetBtn) resetBtn.addEventListener('click', resetGame);
-
-// Update the UI stats display
-function updateStats() {
-  document.getElementById('current-cans').textContent = currentCans;
-  document.getElementById('goal-cans').textContent = GOAL_CANS;
-  document.getElementById('score').textContent = score;
-}
-
-// Show a small floating score popup near the click/tap location
-function showScorePopup(event, text) {
-  const popup = document.createElement('div');
-  popup.className = 'score-popup';
-  popup.textContent = text;
-  document.body.appendChild(popup);
-
-  // Position the popup
-  let x = 0, y = 0;
-  if (event.touches && event.touches[0]) {
-    x = event.touches[0].clientX;
-    y = event.touches[0].clientY;
-  } else if (event.clientX !== undefined) {
-    x = event.clientX;
-    y = event.clientY;
-  }
-  popup.style.left = (x - 20) + 'px';
-  popup.style.top = (y - 30) + 'px';
-
-  // animate and remove
-  requestAnimationFrame(() => popup.classList.add('visible'));
-  setTimeout(() => popup.classList.remove('visible'), 700);
-  setTimeout(() => popup.remove(), 900);
-}
-
-// Initialize goal display and timer on load
-document.getElementById('goal-cans').textContent = GOAL_CANS;
-document.getElementById('timer').textContent = timeLeft;
-
-// Confetti effect: small burst of colorful pieces
 function fireConfetti() {
-  const count = 40;
-  const colors = ['#2E9DF7', '#8BD1CB', '#FFC907', '#FF902A', '#4FCB53'];
-  const container = document.createElement('div');
-  container.className = 'confetti-container';
-  document.body.appendChild(container);
-
+  const colors = ['#2E9DF7', '#FF9F1C', '#7ED957', '#FFD6E0', '#6C5CE7'];
+  const count = 28;
   for (let i = 0; i < count; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    // randomize size and position
-    const size = Math.floor(Math.random() * 8) + 6; // 6-14px
-    piece.style.width = size + 'px';
-    piece.style.height = (size * 0.6) + 'px';
-    piece.style.left = (50 + (Math.random() - 0.5) * 60) + '%';
-    piece.style.transform = `rotate(${Math.random() * 360}deg)`;
-    // delay and animation speed
-    piece.style.animationDelay = (Math.random() * 0.3) + 's';
-    piece.style.animationDuration = (1 + Math.random() * 1.2) + 's';
-    container.appendChild(piece);
-  }
+    (function () {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.left = (window.innerWidth / 2 + (Math.random() * 200 - 100)) + 'px';
+      el.style.top = (window.innerHeight / 3 + (Math.random() * 40 - 20)) + 'px';
+      el.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+      document.body.appendChild(el);
 
-  // cleanup after animation
-  setTimeout(() => { container.remove(); }, 2200);
+      const dx = (Math.random() - 0.5) * 600;
+      const dy = 400 + Math.random() * 200;
+      const rot = (Math.random() - 0.5) * 720;
+
+      el.animate([
+        { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+        { transform: 'translate(' + dx + 'px, ' + dy + 'px) rotate(' + rot + 'deg)', opacity: 0.2 }
+      ], { duration: 1500 + Math.random() * 800, easing: 'cubic-bezier(.17,.67,.3,1)' });
+
+      setTimeout(() => { if (el && el.parentElement) el.parentElement.removeChild(el); }, 2200);
+    })();
+  }
+}
+
+function initUI() {
+  createGrid();
+  const startBtn = document.getElementById('start-game');
+  const resetBtn = document.getElementById('reset-game');
+  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (resetBtn) resetBtn.addEventListener('click', resetGame);
+
+  const diffEl = document.getElementById('difficulty');
+  const difficulty = (diffEl && diffEl.value) ? diffEl.value : 'Normal';
+  const settings = DIFFICULTY_SETTINGS[difficulty] || DIFFICULTY_SETTINGS.Normal;
+  timeLeft = settings.time;
+  winThreshold = settings.goalPoints;
+
+  const goalEl = document.getElementById('goal-cans');
+  const timerEl = document.getElementById('timer');
+  if (goalEl) goalEl.textContent = winThreshold;
+  if (timerEl) timerEl.textContent = timeLeft;
+
+  document.addEventListener('keydown', (e) => {
+    const activeId = (document.activeElement && document.activeElement.id) ? document.activeElement.id : '';
+    if ((e.key === 'Enter' || e.key === ' ') && !gameActive && activeId === 'start-game') {
+      startGame();
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUI);
+} else {
+  initUI();
 }
