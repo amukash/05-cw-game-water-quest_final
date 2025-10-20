@@ -88,7 +88,7 @@ function spawnWaterCan() {
     randomCell.innerHTML = `
       <div class="water-can-wrapper spawn">
         <button class="oil-tank" aria-label="Oil tank - avoid">
-          <img class="item-img" src="img/oil-tank.png" alt="Oil tank">
+          <img class="item-img" src="img/oil-can-transparent.png" alt="Oil tank">
         </button>
       </div>
     `;
